@@ -1,0 +1,51 @@
+{
+  "name": "Chomp",
+  "author": "Desktop Deleter",
+  "sprites": "{level}-{state}.svg",
+  "timings": {
+    "eatingMs": 1400,
+    "happyMs": 1600,
+    "refuseMs": 2200,
+    "petMs": 1200
+  },
+  "lines": {
+    "hungry": [
+      "Ooh, gimme!",
+      "Is that for me?",
+      "*drools*"
+    ],
+    "eat": [
+      "Nom nom nom!",
+      "Delicious!",
+      "*burp*",
+      "Mmm, crunchy bytes.",
+      "That's {total} files eaten!"
+    ],
+    "full": [
+      "Urp... so full.",
+      "One more... maybe.",
+      "*loosens belt*"
+    ],
+    "permanentEat": [
+      "*FWOOSH*",
+      "Gone. Forever.",
+      "Mwahaha!"
+    ],
+    "refuse": [
+      "Bleh! I can't eat",
+      "Nope, not eating"
+    ],
+    "pet": [
+      "Hehe!",
+      "That tickles!",
+      "<3"
+    ],
+    "digestStart": [
+      "Hrrngh..."
+    ],
+    "digest": [
+      "Ahh, much better!",
+      "Room for more!"
+    ]
+  }
+}

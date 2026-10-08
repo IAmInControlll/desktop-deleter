@@ -1,0 +1,48 @@
+{
+  "name": "Binny",
+  "author": "Desktop Deleter",
+  "sprites": "{level}-{state}.svg",
+  "timings": {
+    "eatingMs": 1400,
+    "happyMs": 1600,
+    "refuseMs": 2200,
+    "petMs": 1200
+  },
+  "lines": {
+    "hungry": [
+      "Ooh, garbage!",
+      "Feed me trash!",
+      "*lid rattles*"
+    ],
+    "eat": [
+      "*clang* Nom!",
+      "Trash is treasure.",
+      "Mmm, rubbish."
+    ],
+    "full": [
+      "Getting a bit full...",
+      "*creak*",
+      "Can't... close... lid..."
+    ],
+    "permanentEat": [
+      "*FWOOSH*",
+      "Incinerated!",
+      "Gone forever!"
+    ],
+    "refuse": [
+      "Can't fit",
+      "Nope, not eating"
+    ],
+    "pet": [
+      "*happy rattle*",
+      "Hehe!"
+    ],
+    "digestStart": [
+      "Taking myself out..."
+    ],
+    "digest": [
+      "Fresh and empty!",
+      "Squeaky clean!"
+    ]
+  }
+}

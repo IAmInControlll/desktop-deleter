@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -10 172 172" width="160" height="160">
+  <style>
+    .g { animation: shake .6s ease-in-out infinite; }
+    .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.2s infinite; }
+    .sweat { animation: sweat 1.2s ease-in infinite; }
+    .fl { transform-box: fill-box; transform-origin: 50% 100%; }
+    .fa { animation: flick .45s ease-in-out infinite alternate; }
+    .fb { animation: flick .38s ease-in-out .1s infinite alternate-reverse; }
+    .fc { animation: flick .52s ease-in-out .2s infinite alternate; }
+    @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+    @keyframes bob { 50% { transform: translateY(-4px); } }
+    @keyframes breathe { 50% { transform: scale(1.025, .98); } }
+    @keyframes hic { 0%, 88%, 100% { transform: translateY(0); } 91% { transform: translateY(-9px); } 94% { transform: translateY(0); } }
+    @keyframes bounce { 50% { transform: translateY(-7px); } }
+    @keyframes gape { 50% { transform: scaleY(1.1); } }
+    @keyframes drool { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(16px); opacity: 0; } }
+    @keyframes chew { from { transform: scale(1.04, .96); } to { transform: scale(.98, 1.03); } }
+    @keyframes chomp { from { transform: scaleY(1); } to { transform: scaleY(.12); } }
+    @keyframes gurgle { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+    @keyframes b1 { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(-48px,-30px) rotate(-200deg); } }
+    @keyframes b2 { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(46px,-36px) rotate(220deg); } }
+    @keyframes b3 { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(-36px,22px) rotate(-160deg); } }
+    @keyframes b4 { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(40px,18px) rotate(180deg); } }
+    @keyframes smoke { 0% { opacity: .9; transform: translate(0,0) scale(.6); } 100% { opacity: 0; transform: translate(0,-50px) scale(1.6); } }
+    @keyframes hop { 0%, 100% { transform: translateY(0) scale(1.03, .97); } 50% { transform: translateY(-12px) scale(.98, 1.02); } }
+    @keyframes float { 0% { opacity: 0; transform: translateY(0) scale(.6); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-26px) scale(1); } }
+    @keyframes shake { 0%, 60%, 100% { transform: translateX(0); } 10%, 30%, 50% { transform: translateX(-5px); } 20%, 40% { transform: translateX(5px); } }
+    @keyframes sweat { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+    @keyframes flick { from { transform: scale(1, 1) skewX(0); } to { transform: scale(.92, 1.14) skewX(4deg); } }
+  </style>
+  <defs><radialGradient id="skin" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#b19bff"/><stop offset="1" stop-color="#6a4be0"/></radialGradient></defs>
+  <ellipse cx="80" cy="150" rx="40.5" ry="6" fill="#000" opacity=".18"/>
+  <g class="hic"><g class="g">
+    <ellipse cx="56.78" cy="140" rx="13" ry="8" fill="#4b31a8"/><ellipse cx="103.22" cy="140" rx="13" ry="8" fill="#4b31a8"/>
+    <path d="M78 42 C 72 28, 86 20, 92 30" fill="none" stroke="#4b31a8" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="80" cy="91" rx="54" ry="51" fill="url(#skin)" stroke="#4b31a8" stroke-width="3"/>
+    <ellipse cx="57.32" cy="60.400000000000006" rx="14" ry="7" fill="#fff" opacity=".28" transform="rotate(-28 57.32 60.400000000000006)"/>
+    <clipPath id="belly"><ellipse cx="80" cy="120.58" rx="27" ry="16.830000000000002"/></clipPath>
+    <ellipse cx="80" cy="120.58" rx="27" ry="16.830000000000002" fill="#3d2a8a" opacity="0.35"/>
+    <g clip-path="url(#belly)"><g class="gurgle"></g></g>
+    <ellipse cx="80" cy="120.58" rx="27" ry="16.830000000000002" fill="none" stroke="#4b31a8" stroke-width="2" opacity=".45"/>
+    <ellipse cx="67.85" cy="113.0065" rx="5.94" ry="3.0294000000000003" fill="#fff" opacity=".35" transform="rotate(-20 67.85 113.0065)"/>
+    <path d="M51 58 L68 67 L51 76" fill="none" stroke="#1d1033" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M109 58 L92 67 L109 76" fill="none" stroke="#1d1033" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M60 94 q5 -7 10 0 t10 0 t10 0 t10 0" fill="none" stroke="#2a1650" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="46" cy="85" rx="9" ry="4.95" fill="#ff8fb1" opacity="0.55"/><ellipse cx="114" cy="85" rx="9" ry="4.95" fill="#ff8fb1" opacity="0.55"/><path class="sweat" d="M126 55.300000000000004 q-7 11 0 15 q7 -4 0 -15z" fill="#8fdcff"/>
+  </g></g>
+  
+</svg>
