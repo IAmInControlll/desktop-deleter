@@ -41,7 +41,7 @@
   "pixelArt": true,
   "idleActions": [
     "teleport",
-    "turn",
+    "stretch",
     "sway",
     "sigh",
     "shuffle"

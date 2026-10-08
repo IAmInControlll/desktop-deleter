@@ -141,7 +141,7 @@ Characters with motion also do a little idle action every 3–12 seconds, picked
 | `sway` | Slow side-to-side sway (bored) |
 | `stretch` | Yawns and stretches tall |
 | `doze` | Nods off, with floating z's |
-| `turn` | Turns to face the other way for a moment |
+| `turn` | Turns to face the other way for a moment (mirror flip; best for side-facing characters) |
 | `hover` | Floats up and hovers |
 | `teleport` | Flickers out, reappears a step away, snaps back, with sparkles |
 | `lunge` | Crouches, then strikes forward (to the right) |
