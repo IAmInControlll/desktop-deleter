@@ -32,11 +32,27 @@ the right-click menu empties the Recycle Bin, and Windows asks you to confirm fi
 ### Permanent delete
 
 By default, eaten files go to the **Windows Recycle Bin**, so you can always get them back.
-"Permanent delete" mode skips the bin. He switches to his `permanent` look (an incinerator)
-and glows red while it's on. Nothing goes into the bin, so he doesn't fill up.
+"Permanent delete" mode skips the bin. He switches to his `permanent` look (an incinerator),
+glows red, and the tray bin turns red-hot while it's on. Nothing goes into the bin, so he
+doesn't fill up. Permanent delete lasts for the current session only: every launch starts
+back in Recycle Bin mode. Files dropped before you switch modes are deleted the way they
+were dropped.
 
-He refuses to eat drives, the Windows folder, Program Files, and your main user folders
-(Desktop, Documents, etc.).
+### What he won't eat
+
+Every dropped path is checked before anything is deleted (`src-tauri/src/safety.rs`), in
+both modes:
+
+- **Protected trees:** Windows, Program Files, Program Files (x86) and ProgramData, plus
+  everything inside them.
+- **Protected folders:** your user folder, Desktop, Documents, Downloads, Pictures, Music,
+  Videos, AppData and OneDrive. These folders themselves are refused, but ordinary files
+  inside them are fine.
+- Whole drives and shares, the app itself, and any folder that contains one of the above.
+- Paths are compared after resolving `..`, case, `\\?\` prefixes, 8.3 short names,
+  junctions and symlinks. A shortcut-style link (symlink/junction) is deleted as a link;
+  what it points to is never touched, and links into protected places are refused.
+- Anything that can't be checked is refused.
 
 ## Development
 
@@ -47,6 +63,7 @@ npm install
 npm run dev      # run with hot reload
 npm run build    # produces an installer in src-tauri/target/release/bundle/nsis/
 npm run icon     # regenerate app icons from app-icon.svg
+npm test         # JS tests (node --test) + Rust tests (cargo test)
 ```
 
 ## Project layout
@@ -62,6 +79,9 @@ tools/
   check-character.mjs    checks a character has every sprite  (node tools/check-character.mjs [id])
   gen-chomp.mjs          generates Chomp's SVG art             (node tools/gen-chomp.mjs)
   gen-bin.mjs            generates Binny's SVG art             (node tools/gen-bin.mjs)
+  gen-idle-frames.mjs    makes blink/glance frames for pixel characters (node tools/gen-idle-frames.mjs [id])
+src/core.js              settings load/save and the eating queue (unit-tested in tests/)
+src-tauri/src/safety.rs  path checks and deletion (unit-tested with throwaway fixtures)
 src-tauri/src/lib.rs     Rust commands: eat (Recycle Bin / permanent delete + safety checks),
                          tummy / digest (Recycle Bin size, empty), set_on_top (top vs. desktop)
 ```
@@ -132,4 +152,11 @@ Notes:
 - Speech lines are all optional. `full` lines replace `eat` at the `full`/`overflow` levels,
   and `permanentEat` replaces `eat` in permanent mode. `{count}` (files in this bite) and
   `{total}` (lifetime total) can be used in `eat` lines.
+- `"pixelArt": true` makes pixel-art sprites scale with sharp square pixels instead of blurring.
+- Still sprites (PNG/WebP) get built-in motion (bob, chew, hop, shake...); SVG/GIF are expected
+  to animate themselves. Override with `"motion": true` or `false`.
+- Characters with motion do an idle action every 3–12 s (sigh, sway, doze, hover, teleport...),
+  chosen from `idleActions` in character.json. See docs/CHARACTER_GUIDE.md.
+- Optional `{level}-idle-blink`, `-idle-look-left` and `-idle-look-right` frames make him blink
+  and glance while idle. See docs/CHARACTER_GUIDE.md.
 - `timings` and `fullness` (`{ "fullAtMB": 1024, "fullAtItems": 100 }`) are optional overrides.

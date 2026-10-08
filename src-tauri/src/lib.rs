@@ -1,113 +1,45 @@
+mod safety;
+
+use safety::{EatReport, Policy, Refused};
 use serde::Serialize;
-use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
-#[derive(Serialize)]
-struct Refused {
-    name: String,
-    reason: String,
-}
-
-#[derive(Serialize)]
-struct EatReport {
-    eaten: usize,
-    refused: Vec<Refused>,
-}
-
-fn norm(p: &Path) -> String {
-    p.to_string_lossy()
-        .trim_end_matches(['\\', '/'])
-        .to_lowercase()
-}
-
-/// Folders the little guy must never eat, no matter how hungry he is.
-fn protected_reason(app: &AppHandle, path: &Path) -> Option<&'static str> {
-    if path.parent().is_none() {
-        return Some("that's a whole drive!");
-    }
-    let p = norm(path);
-
-    if let Ok(win) = std::env::var("SystemRoot") {
-        let w = norm(Path::new(&win));
-        if p == w || p.starts_with(&format!("{w}\\")) {
-            return Some("that's part of Windows!");
-        }
-    }
-
-    let mut important: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "ProgramData", "USERPROFILE", "PUBLIC"]
-        .iter()
-        .filter_map(|v| std::env::var_os(v).map(PathBuf::from))
-        .collect();
+/// Builds the "never eat this" policy for this PC, adding the user's known folders
+/// (Desktop, Documents...) as Windows reports them, which may differ from the defaults
+/// (e.g. when OneDrive moves them).
+fn system_policy(app: &AppHandle) -> Result<Policy, &'static str> {
     let dirs = app.path();
-    important.extend(
-        [
-            dirs.home_dir(),
-            dirs.desktop_dir(),
-            dirs.document_dir(),
-            dirs.download_dir(),
-            dirs.picture_dir(),
-            dirs.audio_dir(),
-            dirs.video_dir(),
-            dirs.data_dir(),
-            dirs.local_data_dir(),
-        ]
-        .into_iter()
-        .flatten(),
-    );
-    if important.iter().any(|i| norm(i) == p) {
-        return Some("that folder is too important!");
-    }
-
-    if let Ok(exe) = std::env::current_exe() {
-        if norm(&exe) == p {
-            return Some("I can't eat myself!");
-        }
-    }
-    None
-}
-
-fn eat_one(path: &Path, permanent: bool) -> Result<(), String> {
-    if permanent {
-        if path.is_dir() {
-            std::fs::remove_dir_all(path)
-        } else {
-            std::fs::remove_file(path)
-        }
-        .map_err(|e| e.to_string())
-    } else {
-        trash::delete(path).map_err(|e| e.to_string())
-    }
+    let known = [
+        dirs.home_dir(),
+        dirs.desktop_dir(),
+        dirs.document_dir(),
+        dirs.download_dir(),
+        dirs.picture_dir(),
+        dirs.audio_dir(),
+        dirs.video_dir(),
+        dirs.data_dir(),
+        dirs.local_data_dir(),
+    ];
+    Policy::for_system(known.into_iter().flatten().collect())
 }
 
 /// Sends dropped paths to the Recycle Bin (or deletes them for good when `permanent`).
+/// Every path is checked by `safety` first; anything it can't approve is refused, untouched.
 #[tauri::command]
 async fn eat(app: AppHandle, paths: Vec<String>, permanent: bool) -> EatReport {
+    let fallback = paths.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let mut report = EatReport { eaten: 0, refused: Vec::new() };
-        for raw in paths {
-            let path = PathBuf::from(&raw);
-            let name = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or(raw);
-
-            let result = if !path.exists() {
-                Err("it's already gone!".to_string())
-            } else if let Some(reason) = protected_reason(&app, &path) {
-                Err(reason.to_string())
-            } else {
-                eat_one(&path, permanent)
-            };
-
-            match result {
-                Ok(()) => report.eaten += 1,
-                Err(reason) => report.refused.push(Refused { name, reason }),
-            }
-        }
-        report
+        let policy = system_policy(&app);
+        safety::eat_paths(&paths, permanent, policy.as_ref().map_err(|e| *e))
     })
     .await
-    .unwrap_or(EatReport { eaten: 0, refused: Vec::new() })
+    .unwrap_or_else(|_| EatReport {
+        eaten: 0,
+        refused: fallback
+            .into_iter()
+            .map(|name| Refused { name, reason: "something went wrong".into() })
+            .collect(),
+    })
 }
 
 #[derive(Serialize, Default)]

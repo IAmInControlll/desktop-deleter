@@ -121,7 +121,49 @@ src/characters/gobbo/
 ```
 
 `character.json` names him, points at the sprites, and holds his speech-bubble lines. Only
-`name` and `sprites` are required.
+`name` and `sprites` are required. For pixel art, add `"pixelArt": true` so sprites scale
+with sharp square pixels instead of being smoothed.
+
+Still sprites (PNG, WebP) get built-in motion from the app: a bob when idle, heavy breathing
+and hiccups when full, a bounce when hungry, chewing, a hop when happy and a head shake when
+refusing. SVG and GIF sprites are expected to animate themselves. Override either way with
+`"motion": true` or `"motion": false`.
+
+### Idle actions
+
+Characters with motion also do a little idle action every 3–12 seconds, picked at random
+(never the same twice running) from `idleActions` in `character.json`:
+
+| Action | What he does |
+| --- | --- |
+| `shuffle` | Shifts his weight to one side and back |
+| `sigh` | Slumps down slowly and back up (bored) |
+| `sway` | Slow side-to-side sway (bored) |
+| `stretch` | Yawns and stretches tall |
+| `doze` | Nods off, with floating z's |
+| `turn` | Turns to face the other way for a moment |
+| `hover` | Floats up and hovers |
+| `teleport` | Flickers out, reappears a step away, snaps back, with sparkles |
+| `lunge` | Crouches, then strikes forward (to the right) |
+| `stomp` | Two heavy stomps |
+
+```json
+"idleActions": ["teleport", "turn", "sway", "sigh", "shuffle"],
+"fxColor": "#5be05b"
+```
+
+Without a list he uses `shuffle`, `sigh`, `sway` and `stretch`. `fxColor` colours the sparkles.
+
+### Optional: blinking and glancing
+
+For extra life while idle, add up to three frames per level, named with the same pattern:
+`{level}-idle-blink`, `{level}-idle-look-left` and `{level}-idle-look-right` (e.g.
+`half-idle-blink.png`). Every few seconds he blinks (sometimes twice) or glances to one side.
+Each must match its `{level}-idle` sprite exactly except for the eyes, or he'll visibly jump.
+
+For pixel-art characters, `node tools/gen-idle-frames.mjs <id>` can make them by editing the
+eyes of the idle sprites. Describe the character's eyes (colour and position) in the `EYES`
+table at the top of that script first. Levels where it can't find the eyes are skipped.
 
 ```json
 {

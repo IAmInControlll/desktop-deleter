@@ -1,3 +1,5 @@
+import { loadSettings, serializeSettings, createFeedQueue } from "./core.js";
+
 const { invoke } = window.__TAURI__.core;
 const { getCurrentWindow, currentMonitor, availableMonitors, PhysicalPosition, LogicalSize } = window.__TAURI__.window;
 const { getCurrentWebview } = window.__TAURI__.webview;
@@ -12,18 +14,14 @@ const bubbleEl = document.getElementById("bubble");
 // ---------- settings (persisted in the WebView's local storage) ----------
 
 const SETTINGS_KEY = "desktop-deleter-settings";
-const settings = Object.assign(
-  { character: "chomp", permanent: false, eatenCount: 0, position: null, onTop: true, scale: 1, autostartSet: false },
-  safeParse(localStorage.getItem(SETTINGS_KEY))
-);
-
-function safeParse(json) {
-  try { return JSON.parse(json) || {}; } catch { return {}; }
-}
+const settings = loadSettings(localStorage.getItem(SETTINGS_KEY));
 
 function saveSettings() {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(SETTINGS_KEY, serializeSettings(settings));
 }
+
+// Permanent delete lasts for this session only: it always starts off and is never saved.
+let permanentMode = false;
 
 // ---------- character loading ----------
 //
@@ -74,15 +72,22 @@ async function loadCharacter(id) {
   def.lines = def.lines || {};
   def.fullness = { ...DEFAULT_FULLNESS, ...def.fullness };
 
-  const files = [...LEVELS.map((l) => l.name), PERMANENT_LEVEL].flatMap((level) =>
-    STATES.map((state) => spriteFile(def, level, state))
-  );
-  const loaded = await Promise.all(files.map((f) => preload(base + f)));
-  const sprites = new Set(files.filter((_, i) => loaded[i]));
+  const levels = [...LEVELS.map((l) => l.name), PERMANENT_LEVEL];
+  const files = levels.flatMap((level) => STATES.map((state) => spriteFile(def, level, state)));
+  // Optional extra idle frames (blink, glance left/right); fine if a character has none.
+  const extras = levels.flatMap((level) => IDLE_EXTRAS.map((x) => spriteFile(def, level, `idle-${x}`)));
+  const all = [...files, ...extras];
+  const loaded = await Promise.all(all.map((f) => preload(base + f)));
+  const sprites = new Set(all.filter((_, i) => loaded[i]));
   const missing = files.filter((f) => !sprites.has(f));
   if (missing.length) console.warn(`${id} is missing sprites:`, missing);
 
   character = { id, base, def, sprites };
+  // Pixel art scales with hard square edges instead of being smoothed into a blur.
+  guyEl.classList.toggle("pixel-art", !!def.pixelArt);
+  // Still sprites get the engine's motion (bob, chew, hop...). SVG and GIF sprites animate
+  // themselves, so they're left alone unless the character says otherwise.
+  guyEl.classList.toggle("motion", def.motion ?? !/\.(svg|gif)$/i.test(def.sprites));
   settings.character = id;
   saveSettings();
   currentFile = null;
@@ -105,7 +110,7 @@ function computeFullness({ bytes, items }) {
 
 /** Which sprite level to draw: the permanent set while permanent delete is on, else by fullness. */
 function currentLevel() {
-  if (settings.permanent) return PERMANENT_LEVEL;
+  if (permanentMode) return PERMANENT_LEVEL;
   let level = LEVELS[0].name;
   for (const l of LEVELS) if (fullness >= l.at) level = l.name;
   return level;
@@ -158,7 +163,8 @@ async function digest() {
 // ---------- state machine ----------
 
 let currentState = null;
-let currentFile = null;
+let currentFile = null; // the sprite for the current state
+let shownFile = null; // what's on screen (differs from currentFile during a blink or glance)
 let stateGen = 0;
 
 /** Picks the best sprite that exists: this level+state, this level's idle, then the empty level. */
@@ -177,13 +183,142 @@ function resolveSprite(state) {
 function setState(state, revertMs) {
   const gen = ++stateGen;
   const file = resolveSprite(state);
-  if (file !== currentFile) {
-    guyEl.src = character.base + file;
-    currentFile = file;
-  }
+  currentFile = file;
+  show(file);
   currentState = state;
+  for (const s of STATES) guyEl.classList.toggle(`state-${s}`, s === state);
+  const level = currentLevel();
+  guyEl.classList.toggle("stuffed", level === "full" || level === "overflow");
   if (revertMs) {
     setTimeout(() => { if (gen === stateGen) setState("idle"); }, revertMs);
+  }
+  scheduleIdleLife(gen);
+}
+
+function show(file) {
+  const url = character.base + file; // full path: characters share file names
+  if (url !== shownFile) {
+    guyEl.src = url;
+    shownFile = url;
+  }
+}
+
+// ---------- idle life: blinks, glances and little actions ----------
+//
+// Two independent timers run while he's idle:
+// - Eyes: a character with `{level}-idle-blink` / `-idle-look-left` / `-idle-look-right` sprites
+//   blinks every 2.5-6 s (sometimes twice) and now and then glances to one side.
+// - Actions: a character with engine motion (still sprites) does a little idle action every
+//   3-12 s, picked from `idleActions` in its character.json, never the same one twice running.
+
+const IDLE_EXTRAS = ["blink", "look-left", "look-right"];
+
+/** Idle actions: how long each runs and any effect it shows. The movement is in style.css. */
+const IDLE_ACTIONS = {
+  shuffle: { ms: 1200, sided: true }, // weight shift to one side
+  sigh: { ms: 2200 }, // slump down and back up (bored)
+  sway: { ms: 3000 }, // slow side-to-side (bored)
+  stretch: { ms: 1700 }, // yawn and stretch tall
+  doze: { ms: 4200, fx: "zzz" }, // nod off
+  turn: { ms: 2200 }, // face the other way for a moment
+  hover: { ms: 3000 }, // float up and hover
+  teleport: { ms: 1500, fx: "sparkles" }, // flicker out, reappear a step away, snap back
+  lunge: { ms: 1200 }, // crouch, then strike forward
+  stomp: { ms: 1400 }, // two heavy stomps
+};
+const DEFAULT_ACTIONS = ["shuffle", "sigh", "sway", "stretch"];
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const fxEl = document.getElementById("fx");
+
+let eyeTimer = null;
+let actionTimer = null;
+let lastAction = null;
+const between = (min, max) => min + Math.random() * (max - min);
+
+function idleExtra(name) {
+  const file = spriteFile(character.def, currentLevel(), `idle-${name}`);
+  return character.sprites.has(file) ? file : null;
+}
+
+function scheduleIdleLife(gen) {
+  clearTimeout(eyeTimer);
+  clearTimeout(actionTimer);
+  stopAction();
+  if (currentState !== "idle") return;
+  eyeTimer = setTimeout(() => playEyes(gen), between(2500, 6000));
+  actionTimer = setTimeout(() => playAction(gen), between(3000, 12000));
+}
+
+async function playEyes(gen) {
+  const still = () => gen === stateGen;
+  /** Shows an extra frame for `ms`, then puts the state's sprite back. */
+  const flash = async (file, ms) => {
+    show(file);
+    await sleep(ms);
+    if (still()) show(currentFile);
+  };
+  const blink = idleExtra("blink");
+  const looks = ["look-left", "look-right"].map(idleExtra).filter(Boolean);
+  if (looks.length && Math.random() < 0.25) {
+    await flash(looks[Math.floor(Math.random() * looks.length)], between(800, 1500));
+  } else if (blink) {
+    await flash(blink, 130);
+    if (Math.random() < 0.25 && still()) {
+      await sleep(110);
+      if (still()) await flash(blink, 120);
+    }
+  }
+  if (still()) eyeTimer = setTimeout(() => playEyes(gen), between(2500, 6000));
+}
+
+async function playAction(gen) {
+  const still = () => gen === stateGen;
+  if (!guyEl.classList.contains("motion") || reducedMotion.matches) return;
+  const names = (character.def.idleActions || DEFAULT_ACTIONS).filter((n) => IDLE_ACTIONS[n]);
+  if (!names.length) return;
+  const pool = names.length > 1 ? names.filter((n) => n !== lastAction) : names;
+  const name = pool[Math.floor(Math.random() * pool.length)];
+  lastAction = name;
+  const action = IDLE_ACTIONS[name];
+  const cls = `act-${name}${action.sided ? (Math.random() < 0.5 ? "-left" : "-right") : ""}`;
+  guyEl.classList.add("acting", cls);
+  if (action.fx) playFx(action.fx);
+  await sleep(action.ms);
+  if (!still()) return; // he started something else; that already cleared the action
+  guyEl.classList.remove("acting", cls);
+  actionTimer = setTimeout(() => playAction(gen), between(3000, 12000));
+}
+
+function stopAction() {
+  for (const c of [...guyEl.classList]) if (c === "acting" || c.startsWith("act-")) guyEl.classList.remove(c);
+  fxEl.replaceChildren();
+}
+
+/** Little particles over him: floating z's while dozing, sparkles when teleporting. */
+function playFx(kind) {
+  const spawn = (cls, text, vars) => {
+    const el = document.createElement("span");
+    el.className = cls;
+    el.textContent = text;
+    for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
+    el.addEventListener("animationend", () => el.remove());
+    fxEl.append(el);
+  };
+  if (kind === "zzz") {
+    [0, 800, 1600].forEach((delay, i) => setTimeout(() => {
+      if (guyEl.classList.contains("act-doze")) spawn("fx-z", "z", { "--i": i });
+    }, delay));
+  } else if (kind === "sparkles") {
+    for (let i = 0; i < 12; i++) {
+      spawn("fx-spark", "", {
+        left: `${between(25, 75)}%`,
+        top: `${between(15, 85)}%`,
+        "--dx": `${between(-18, 18)}px`,
+        "--dy": `${between(-22, 6)}px`,
+        "--delay": `${between(0, 500)}ms`,
+        "--color": character.def.fxColor || "#ffe36b",
+      });
+    }
   }
 }
 
@@ -208,10 +343,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---------- eating ----------
 
 let busy = false;
-let feedQueue = Promise.resolve();
+const enqueue = createFeedQueue((paths, permanent) => eatNow(paths, permanent));
 
+/** Queues a drop, locking in the deletion mode that's on right now. */
 function feed(paths) {
-  feedQueue = feedQueue.then(() => eatNow(paths)).catch((e) => {
+  enqueue(paths, permanentMode).catch((e) => {
     console.error(e);
     busy = false;
     setState("refuse", character.def.timings.refuseMs);
@@ -219,13 +355,13 @@ function feed(paths) {
   });
 }
 
-async function eatNow(paths) {
+async function eatNow(paths, permanent) {
   if (!paths.length) return;
   busy = true;
   const t = character.def.timings;
   setState("eating");
   const started = Date.now();
-  const report = await invoke("eat", { paths, permanent: settings.permanent });
+  const report = await invoke("eat", { paths, permanent });
   const remaining = t.eatingMs - (Date.now() - started);
   if (remaining > 0) await sleep(remaining);
 
@@ -242,7 +378,7 @@ async function eatNow(paths) {
   } else {
     setState("happy", t.happyMs);
     const level = currentLevel();
-    const kind = level === PERMANENT_LEVEL && character.def.lines.permanentEat ? "permanentEat"
+    const kind = permanent && character.def.lines.permanentEat ? "permanentEat"
       : (level === "full" || level === "overflow") && character.def.lines.full ? "full"
       : "eat";
     say(line(kind, { count: report.eaten, total: settings.eatenCount }), t.happyMs);
@@ -314,12 +450,11 @@ async function characterSubmenu() {
 }
 
 function togglePermanent() {
-  settings.permanent = !settings.permanent;
-  saveSettings();
+  permanentMode = !permanentMode;
   applyMode();
   redraw();
   updateTray();
-  say(settings.permanent ? "No take-backs mode! Files are gone for good." : "Phew, back to the Recycle Bin.", 3000);
+  say(permanentMode ? "No take-backs mode! Files are gone for good." : "Phew, back to the Recycle Bin.", 3000);
 }
 
 /** The menu items both menus share. */
@@ -336,7 +471,7 @@ async function sharedItems() {
     }),
     await sep(),
     await characterSubmenu(),
-    await CheckMenuItem.new({ text: "Permanent delete (skip Recycle Bin)", checked: settings.permanent, action: togglePermanent }),
+    await CheckMenuItem.new({ text: "Permanent delete (skip Recycle Bin)", checked: permanentMode, action: togglePermanent }),
     await sep(),
     await Submenu.new({
       text: "Size",
@@ -433,7 +568,7 @@ async function trayMenu() {
 
 async function createTray() {
   const options = {
-    icon: await binIcon(settings.permanent),
+    icon: await binIcon(permanentMode),
     tooltip: "Desktop Deleter",
     menu: await trayMenu(),
     showMenuOnLeftClick: false,
@@ -441,7 +576,7 @@ async function createTray() {
       if (e.type === "Click" && e.button === "Left" && e.buttonState === "Up") setShown(!shown).catch(console.error);
     },
   };
-  trayFire = settings.permanent;
+  trayFire = permanentMode;
   // A page reload (dev) shouldn't stack up a second tray icon.
   tray = (await TrayIcon.getById("main")) || (await TrayIcon.new({ id: "main", ...options }));
   await updateTray(true);
@@ -452,18 +587,18 @@ async function updateTray(forceIcon = false) {
   if (!tray) return;
   try {
     await tray.setMenu(await trayMenu());
-    if (forceIcon || trayFire !== settings.permanent) {
-      trayFire = settings.permanent;
-      await tray.setIcon(await binIcon(settings.permanent));
+    if (forceIcon || trayFire !== permanentMode) {
+      trayFire = permanentMode;
+      await tray.setIcon(await binIcon(permanentMode));
     }
-    await tray.setTooltip(`Desktop Deleter${settings.permanent ? " (permanent delete ON)" : ""}`);
+    await tray.setTooltip(`Desktop Deleter${permanentMode ? " (permanent delete ON)" : ""}`);
   } catch (e) {
     console.error(e);
   }
 }
 
 function applyMode() {
-  guyEl.classList.toggle("permanent", settings.permanent);
+  guyEl.classList.toggle("permanent", permanentMode);
 }
 
 // ---------- window placement ----------
@@ -512,7 +647,7 @@ const windowSizeFor = (scale) => ({
 async function setScale(scale, anchor = true) {
   settings.scale = scale;
   saveSettings();
-  guyEl.style.setProperty("--scale", scale);
+  document.documentElement.style.setProperty("--scale", scale); // sizes him and his effects
   const before = anchor && { pos: await appWindow.outerPosition(), size: await appWindow.outerSize() };
   const { width, height } = windowSizeFor(scale);
   await appWindow.setSize(new LogicalSize(width, height));

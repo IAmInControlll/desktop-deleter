@@ -1,0 +1,49 @@
+{
+  "name": "Optimus Prime",
+  "author": "AI-generated character artwork",
+  "sprites": "{level}-{state}.png",
+  "timings": {
+    "eatingMs": 1400,
+    "happyMs": 1600,
+    "refuseMs": 2200,
+    "petMs": 1200
+  },
+  "fullness": {
+    "fullAtMB": 1024,
+    "fullAtItems": 100
+  },
+  "lines": {
+    "hungry": [
+      "Fuel reserves low."
+    ],
+    "eat": [
+      "Fuel reserves replenished."
+    ],
+    "full": [
+      "Time for a little break."
+    ],
+    "permanentEat": [
+      "AllSpark energized."
+    ],
+    "refuse": [
+      "That one is off limits."
+    ],
+    "pet": [
+      "Hey, friend!"
+    ],
+    "digestStart": [
+      "Making room..."
+    ],
+    "digest": [
+      "Ready for more!"
+    ]
+  },
+  "pixelArt": true,
+  "idleActions": [
+    "stomp",
+    "stretch",
+    "shuffle",
+    "sigh",
+    "turn"
+  ]
+}

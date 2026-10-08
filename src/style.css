@@ -23,6 +23,175 @@ body {
   transition: filter 200ms;
 }
 
+/* Motion for still (PNG) sprites, matching what Chomp's animated SVGs do. Anchored at the
+   feet, so squash and stretch keeps him standing on the same spot. */
+#guy.motion {
+  transform-origin: 50% 100%;
+}
+#guy.motion.state-idle { animation: dd-bob 2.4s ease-in-out infinite; }
+#guy.motion.state-idle.stuffed { animation: dd-stuffed 6.4s ease-in-out infinite; }
+#guy.motion.state-hungry { animation: dd-bounce 0.5s ease-in-out infinite; }
+#guy.motion.state-eating { animation: dd-chew 0.28s ease-in-out infinite alternate; }
+#guy.motion.state-happy { animation: dd-hop 0.6s ease-in-out infinite; }
+#guy.motion.state-refuse { animation: dd-shake 0.6s ease-in-out infinite; }
+
+/* Idle actions (see IDLE_ACTIONS in main.js). `.acting` makes these win over the idle bob. */
+#guy.motion.state-idle.acting.act-shuffle-left { animation: dd-shuffle-left 1.2s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-shuffle-right { animation: dd-shuffle-right 1.2s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-sigh { animation: dd-sigh 2.2s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-sway { animation: dd-sway 3s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-stretch { animation: dd-stretch 1.7s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-doze { animation: dd-doze 4.2s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-turn { animation: dd-turn 2.2s linear 1; }
+#guy.motion.state-idle.acting.act-hover { animation: dd-hover 3s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-teleport { animation: dd-teleport 1.5s linear 1; }
+#guy.motion.state-idle.acting.act-lunge { animation: dd-lunge 1.2s ease-in-out 1; }
+#guy.motion.state-idle.acting.act-stomp { animation: dd-stomp 1.4s ease-in-out 1; }
+
+@keyframes dd-bob { 50% { transform: translateY(-3px); } }
+@keyframes dd-shuffle-left {
+  0%, 100% { transform: none; }
+  18% { transform: translateX(-2px) skewX(3deg); }
+  36% { transform: translateX(-3px) translateY(-2px) skewX(1deg); }
+  52% { transform: translateX(-3px) skewX(0); }
+  70% { transform: translateX(-1px) skewX(-1.5deg); }
+}
+@keyframes dd-shuffle-right {
+  0%, 100% { transform: none; }
+  18% { transform: translateX(2px) skewX(-3deg); }
+  36% { transform: translateX(3px) translateY(-2px) skewX(-1deg); }
+  52% { transform: translateX(3px) skewX(0); }
+  70% { transform: translateX(1px) skewX(1.5deg); }
+}
+/* Full: slow heavy breaths, then a hiccup. */
+@keyframes dd-stuffed {
+  0%, 40%, 80%, 100% { transform: translateY(0) scale(1, 1); }
+  20%, 60% { transform: translateY(0) scale(1.025, 0.98); }
+  88% { transform: translateY(0) scale(1, 1); }
+  91% { transform: translateY(-8px) scale(0.98, 1.02); }
+  94% { transform: translateY(0) scale(1.02, 0.98); }
+}
+@keyframes dd-sigh {
+  0%, 100% { transform: none; }
+  30%, 65% { transform: scale(1.04, 0.93); }
+}
+@keyframes dd-sway {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-2.5deg); }
+  75% { transform: rotate(2.5deg); }
+}
+@keyframes dd-stretch {
+  0%, 100% { transform: none; }
+  35%, 65% { transform: translateY(-1px) scale(0.97, 1.07); }
+}
+@keyframes dd-doze {
+  0%, 100% { transform: none; }
+  20%, 80% { transform: translateY(2px) rotate(-3deg) scale(1.01, 0.97); }
+  50% { transform: translateY(3px) rotate(-4.5deg) scale(1.02, 0.96); }
+}
+/* A quick turn to face the other way, a pause, and back. */
+@keyframes dd-turn {
+  0%, 6%, 94%, 100% { transform: scaleX(1); }
+  10%, 90% { transform: scaleX(-1); }
+}
+@keyframes dd-hover {
+  0%, 100% { transform: none; }
+  25% { transform: translateY(-12px); }
+  40% { transform: translateY(-10px); }
+  55% { transform: translateY(-13px); }
+  70% { transform: translateY(-11px); }
+  88% { transform: translateY(-2px); }
+}
+/* Flicker out, reappear a step to the side, then snap back. */
+@keyframes dd-teleport {
+  0% { opacity: 1; transform: none; }
+  8% { opacity: 0.3; transform: translateX(-2px); }
+  14%, 42% { opacity: 0; transform: translateX(10px); }
+  52%, 78% { opacity: 1; transform: translateX(10px); }
+  84%, 88% { opacity: 0; transform: none; }
+  96%, 100% { opacity: 1; transform: none; }
+}
+@keyframes dd-lunge {
+  0%, 100% { transform: none; }
+  30% { transform: scale(1.05, 0.9); }
+  45% { transform: translateX(8px) skewX(-8deg) scale(0.97, 1.05); }
+  58% { transform: translateX(8px) skewX(-5deg); }
+  78% { transform: translateX(2px); }
+}
+@keyframes dd-stomp {
+  0%, 40%, 80%, 100% { transform: none; }
+  15% { transform: translateY(-6px) rotate(-1deg); }
+  25% { transform: scale(1.04, 0.96); }
+  30% { transform: translateX(-1px); }
+  35% { transform: translateX(1px); }
+  55% { transform: translateY(-6px) rotate(1deg); }
+  65% { transform: scale(1.04, 0.96); }
+  70% { transform: translateX(1px); }
+  75% { transform: translateX(-1px); }
+}
+
+/* Effects layer: sits exactly over him. */
+#fx {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: calc(160px * var(--scale, 1));
+  height: calc(160px * var(--scale, 1));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.fx-z {
+  position: absolute;
+  left: 62%;
+  top: 14%;
+  font: bold calc((11px + 4px * var(--i, 0)) * var(--scale, 1)) "Segoe UI", sans-serif;
+  color: #dfe6ff;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  opacity: 0;
+  animation: fx-float 2.2s ease-out forwards;
+}
+.fx-spark {
+  position: absolute;
+  width: calc(4px * var(--scale, 1));
+  height: calc(4px * var(--scale, 1));
+  background: var(--color);
+  box-shadow: 0 0 4px var(--color);
+  opacity: 0;
+  animation: fx-spark 0.9s ease-out var(--delay, 0ms) forwards;
+}
+@keyframes fx-float {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(16px, -30px) scale(1.1); }
+}
+@keyframes fx-spark {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.4); }
+}
+
+@keyframes dd-bounce { 50% { transform: translateY(-7px); } }
+@keyframes dd-chew {
+  from { transform: scale(1.04, 0.96); }
+  to { transform: scale(0.98, 1.03); }
+}
+@keyframes dd-hop {
+  0%, 100% { transform: translateY(0) scale(1.03, 0.97); }
+  50% { transform: translateY(-12px) scale(0.98, 1.02); }
+}
+@keyframes dd-shake {
+  0%, 60%, 100% { transform: translateX(0); }
+  10%, 30%, 50% { transform: translateX(-5px); }
+  20%, 40% { transform: translateX(5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #guy.motion { animation: none !important; }
+}
+
+#guy.pixel-art {
+  image-rendering: pixelated;
+}
+
 /* Permanent-delete mode gets an angry red glow so you always know. */
 #guy.permanent {
   filter: drop-shadow(0 0 6px rgba(255, 50, 50, 0.85));

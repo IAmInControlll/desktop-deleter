@@ -1,0 +1,43 @@
+{
+  "name": "Munchest",
+  "author": "AI-generated character artwork",
+  "sprites": "{level}-{state}.png",
+  "timings": {
+    "eatingMs": 1400,
+    "happyMs": 1600,
+    "refuseMs": 2200,
+    "petMs": 1200
+  },
+  "fullness": {
+    "fullAtMB": 1024,
+    "fullAtItems": 100
+  },
+  "lines": {
+    "hungry": [
+      "A file? Hand it over!"
+    ],
+    "eat": [
+      "Another snack!",
+      "That makes {total} files."
+    ],
+    "full": [
+      "Running out of room!"
+    ],
+    "permanentEat": [
+      "Gone for good!"
+    ],
+    "refuse": [
+      "That one is off limits."
+    ],
+    "pet": [
+      "Hey, friend!"
+    ],
+    "digestStart": [
+      "Making room..."
+    ],
+    "digest": [
+      "Ready for more!"
+    ]
+  },
+  "pixelArt": true
+}
